@@ -101,3 +101,7 @@ impl std::error::Error for Error {}
 pub fn scan() -> Result<Vec<Wifi>> {
     crate::sys::scan()
 }
+
+pub fn get_dev() -> Result<String> {
+    crate::sys::get_dev()
+}

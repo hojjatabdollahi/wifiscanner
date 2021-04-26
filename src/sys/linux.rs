@@ -18,7 +18,8 @@ pub(crate) fn scan() -> Result<Vec<Wifi>> {
     let data = String::from_utf8_lossy(&output.stdout);
     let interface = parse_iw_dev(&data)?;
 
-    let output = Command::new("iw")
+    let output = Command::new("sudo")
+        .arg("iw")
         .env(PATH_ENV, path)
         .arg("dev")
         .arg(interface)
@@ -33,6 +34,22 @@ pub(crate) fn scan() -> Result<Vec<Wifi>> {
     }
     let data = String::from_utf8_lossy(&output.stdout);
     parse_iw_dev_scan(&data)
+}
+
+pub(crate) fn get_dev() -> Result<String> {
+    const PATH_ENV: &'static str = "PATH";
+    let path_system = "/usr/sbin:/sbin";
+    let path = env::var_os(PATH_ENV).map_or(path_system.to_string(), |v| {
+        format!("{}:{}", v.to_string_lossy().into_owned(), path_system)
+    });
+
+    let output = Command::new("iw")
+        .env(PATH_ENV, path.clone())
+        .arg("dev")
+        .output()
+        .map_err(|_| Error::CommandNotFound)?;
+    let data = String::from_utf8_lossy(&output.stdout);
+    parse_iw_dev(&data)
 }
 
 fn parse_iw_dev(interfaces: &str) -> Result<String> {
