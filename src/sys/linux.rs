@@ -18,8 +18,7 @@ pub(crate) fn scan() -> Result<Vec<Wifi>> {
     let data = String::from_utf8_lossy(&output.stdout);
     let interface = parse_iw_dev(&data)?;
 
-    let output = Command::new("sudo")
-        .arg("iw")
+    let output = Command::new("iw")
         .env(PATH_ENV, path)
         .arg("dev")
         .arg(interface)
@@ -70,6 +69,14 @@ fn parse_iw_dev_scan(network_list: &str) -> Result<Vec<Wifi>> {
     let mut wifi = Wifi::default();
     for line in network_list.split("\n") {
         if let Ok(mac) = extract_value(line, "BSS ", Some("(")) {
+            if !wifi.mac.is_empty()
+                && !wifi.signal_level.is_empty()
+                && !wifi.channel.is_empty()
+                && !wifi.ssid.is_empty()
+            {
+                wifis.push(wifi);
+                wifi = Wifi::default();
+            }
             wifi.mac = mac;
         } else if let Ok(signal) = extract_value(line, "\tsignal: ", Some(" dBm")) {
             wifi.signal_level = signal;
@@ -77,16 +84,17 @@ fn parse_iw_dev_scan(network_list: &str) -> Result<Vec<Wifi>> {
             wifi.channel = channel;
         } else if let Ok(ssid) = extract_value(line, "\tSSID: ", None) {
             wifi.ssid = ssid;
+        } else if let Ok(security) = extract_value(line, "\tRSN:\t * ", None) {
+            wifi.security = security;
         }
-
-        if !wifi.mac.is_empty()
-            && !wifi.signal_level.is_empty()
-            && !wifi.channel.is_empty()
-            && !wifi.ssid.is_empty()
-        {
-            wifis.push(wifi);
-            wifi = Wifi::default();
-        }
+    }
+    if !wifi.mac.is_empty()
+        && !wifi.signal_level.is_empty()
+        && !wifi.channel.is_empty()
+        && !wifi.ssid.is_empty()
+    {
+        wifis.push(wifi);
+        wifi = Wifi::default();
     }
 
     Ok(wifis)
